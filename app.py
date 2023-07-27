@@ -22,14 +22,14 @@ finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 
 ##### LCD #####
 # Modify this if you have a different sized Character LCD
-lcd_columns = 16
-lcd_rows = 2
+lcd_columns = 20
+lcd_rows = 4
 
 # Initialise I2C bus.
 i2c = busio.I2C(board.SCL, board.SDA)  # uses board.SCL and board.SDA
 
 # Initialise the lcd class
-lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows)
+lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows, address=0x27)
 
 
 class User(db.Model, UserMixin):
