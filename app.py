@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
-from time import sleep
+import time
 import drivers
 import serial
 import adafruit_fingerprint
@@ -59,7 +59,6 @@ class Students(db.Model, UserMixin):
     program = db.Column(db.String(255), nullable=False)
     year = db.Column(db.String(255), nullable=False)
     parentphone = db.Column(db.String(255), nullable=False)
-    fingerprint = db.Column(db.LargeBinary, nullable=True)
     teacher_name = db.Column(db.String(1000), db.ForeignKey('user.fullname'), nullable=False)
     date_added = db.Column(db.Date, default=date.today)
 
@@ -196,15 +195,85 @@ def students_add():
             year = request.form.get('year')
             parentphone = request.form.get('parentphone')
 
+            #
             # Display message on the LCD while waiting for fingerprint scan
-            display.lcd_display_string("Greetings Human!", 1)
-            display.lcd_display_string("Greetings Human!", 2)
-            display.lcd_display_string("Greetings Human!", 3)
-            display.lcd_display_string("Greetings Human!", 4)
+            display.lcd_display_string("Adding New Student", 1)
+            display.lcd_display_string("Waiting for fingerprint scan", 2)
+
+            # Wait for a finger to be read
+            enroll()
 
             return redirect(url_for('students_list'))
         return render_template("students-add.html", courses=courses)
-    
+
+#Fingerprint Enroll
+def enroll(location):
+    for fingerimg in range(1, 3):
+        if fingerimg == 1:
+            display.lcd_display_string("Place finger on sensor", 1)
+        else:
+            display.lcd_display_string("Place finger again", 1)
+
+        while True:
+            i = finger.get_image()
+            if i == adafruit_fingerprint.OK:
+                print("Image taken")
+                break
+            if i == adafruit_fingerprint.NOFINGER:
+                print(".", end="")
+            elif i == adafruit_fingerprint.IMAGEFAIL:
+                print("Imaging error")
+                return False
+            else:
+                print("Other error")
+                return False
+
+        print("Templating...", end="")
+        i = finger.image_2_tz(fingerimg)
+        if i == adafruit_fingerprint.OK:
+            print("Templated")
+        else:
+            if i == adafruit_fingerprint.IMAGEMESS:
+                print("Image too messy")
+            elif i == adafruit_fingerprint.FEATUREFAIL:
+                print("Could not identify features")
+            elif i == adafruit_fingerprint.INVALIDIMAGE:
+                print("Image invalid")
+            else:
+                print("Other error")
+            return False
+
+        if fingerimg == 1:
+            print("Remove finger")
+            time.sleep(1)
+            while i != adafruit_fingerprint.NOFINGER:
+                i = finger.get_image()
+
+    print("Creating model...", end="")
+    i = finger.create_model()
+    if i == adafruit_fingerprint.OK:
+        print("Created")
+    else:
+        if i == adafruit_fingerprint.ENROLLMISMATCH:
+            print("Prints did not match")
+        else:
+            print("Other error")
+        return False
+
+    print("Storing model #%d..." % location, end="")
+    i = finger.store_model(location)
+    if i == adafruit_fingerprint.OK:
+        print("Stored")
+    else:
+        if i == adafruit_fingerprint.BADLOCATION:
+            print("Bad storage location")
+        elif i == adafruit_fingerprint.FLASHERR:
+            print("Flash storage error")
+        else:
+            print("Other error")
+        return False
+
+    return True
 ################ COURSES ################    
 @app.route('/courses/list')
 @login_required
