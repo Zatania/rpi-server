@@ -3,13 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
-import time
-import board
-import busio
+from time import sleep
+import drivers
 import serial
 import adafruit_fingerprint
-import adafruit_character_lcd.character_lcd_i2c as character_lcd
-
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SECRET_KEY'] = 'g1mo9je(e9jo0uv+(8(^1fl31dd%$5rldf04zm$^20am)z=c(h'
@@ -21,16 +18,7 @@ uart = serial.Serial("/dev/ttyAMA0", baudrate=57600, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 
 ##### LCD #####
-# Modify this if you have a different sized Character LCD
-lcd_columns = 20
-lcd_rows = 4
-
-# Initialise I2C bus.
-i2c = busio.I2C(board.SCL, board.SDA)  # uses board.SCL and board.SDA
-
-# Initialise the lcd class
-lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows, address=0x27)
-
+display = drivers.Lcd()
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -209,8 +197,10 @@ def students_add():
             parentphone = request.form.get('parentphone')
 
             # Display message on the LCD while waiting for fingerprint scan
-            lcd.clear()
-            lcd.message = 'Register Fingerprint'
+            display.lcd_display_string("Greetings Human!", 1)
+            display.lcd_display_string("Greetings Human!", 2)
+            display.lcd_display_string("Greetings Human!", 3)
+            display.lcd_display_string("Greetings Human!", 4)
 
             return redirect(url_for('students_list'))
         return render_template("students-add.html", courses=courses)

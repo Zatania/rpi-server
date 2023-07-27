@@ -12,7 +12,6 @@ flask-wtf = "*"
 wtforms = "*"
 werkzeug = "*"
 adafruit-circuitpython-fingerprint = "*"
-adafruit-circuitpython-charlcd = "*"
 board = "*"
 pyserial = "*"
 
