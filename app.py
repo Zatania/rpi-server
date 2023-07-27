@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
 import time
 import board
+import busio
 import serial
 import adafruit_fingerprint
 import adafruit_character_lcd.character_lcd_i2c as character_lcd
@@ -25,7 +26,7 @@ lcd_columns = 20
 lcd_rows = 4
 
 # Initialise I2C bus.
-i2c = board.I2C()  # uses board.SCL and board.SDA
+i2c = busio.I2C(board.SCL, board.SDA)  # uses board.SCL and board.SDA
 
 # Initialise the lcd class
 lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows)
@@ -223,7 +224,7 @@ def students_add():
             # Save the features to database
             feature_data = finger.download_model(1)
             fingerprint = feature_data
-            
+
             new_student = Students(fullname=fullname, course=course, studentid=studentid, department=department, program=program, year=year, parentphone=parentphone, fingerprint=fingerprint, teacher_name=current_user.fullname)
 
             db.session.add(new_student)
