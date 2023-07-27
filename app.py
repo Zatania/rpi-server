@@ -212,24 +212,6 @@ def students_add():
             lcd.clear()
             lcd.message = 'Register Fingerprint'
 
-            finger.enroll_start(1)
-            # Scan the fingerprint
-            lcd.message = 'Waiting for finger...'
-            while finger.get_image() != adafruit_fingerprint.OK:
-                pass
-            # Capture the fingerprint features
-            while finger.image_2_tz(1) != adafruit_fingerprint.OK:
-                pass
-
-            # Save the features to database
-            feature_data = finger.download_model(1)
-            fingerprint = feature_data
-
-            new_student = Students(fullname=fullname, course=course, studentid=studentid, department=department, program=program, year=year, parentphone=parentphone, fingerprint=fingerprint, teacher_name=current_user.fullname)
-
-            db.session.add(new_student)
-            db.session.commit()
-
             return redirect(url_for('students_list'))
         return render_template("students-add.html", courses=courses)
     
