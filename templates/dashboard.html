@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Student Attendance System - Dashboard</title>
+{% endblock %}
+{% block content %}
+    <body>
+        <section class="sign-in">
+            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
+                <div class="col-xl-10">
+                    <div class="card" style="border-radius: 1rem;">
+                        <div class="card-body p-5">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <h5>
+                                        Welcome Teacher {{ fullname }}
+                                    </h5>
+                                </div>
+                                <div class="col-4 offset-4">
+                                    <a href="{{ url_for('logout') }}">
+                                        <button type="button" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+                                    </a>
+                                </div>
+                            </div>
+                            <h1 class="card-title mb-5 text-center">Dashboard</h1>
+                            <form class="text-center">
+                                <div class="row">
+                                    <div class="col-6 mb-5">
+                                        <a href="{{ url_for('attendance') }}">
+                                            <button type="button" class="btn btn-outline-dark"><i class="fa-solid fa-clipboard-user fa-5x m-1"></i> <p class="fw-bold">Attendance</p></button>
+                                        </a>
+                                    </div>
+                                    <div class="col-6 mb-5">
+                                        <a href="">
+                                            <button type="button" class="btn btn-outline-dark"><i class="fa-solid fa-rectangle-list fa-5x m-1"></i> <p class="fw-bold">History</p></button>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-5">
+                                        <a href="{{ url_for('students_list') }}">
+                                            <button type="button" class="btn btn-outline-dark"><i class="fa-solid fa-users fa-5x m-1"></i> <p class="fw-bold">Students</p></button>
+                                        </a>
+                                    </div>
+                                    <div class="col-6 mb-5">
+                                        <a href="{{ url_for('courses') }}">
+                                            <button type="button" class="btn btn-outline-dark"><i class="fa-solid fa-book fa-5x m-1"></i> <p class="fw-bold">Courses</p></button>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Student Attendance System - Attendance</title>
+{% endblock %}
+{% block content %}
+    <body>
+        <section class="index">
+            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
+                <div class="card" style="border-radius: 1rem;">
+                    <div class="card-body p-5">
+                        <h1 class="card-title mb-5 text-center">Attendance</h1>
+                        <div class="card-body text-center">
+                            <p id="date" class="h5"></p>
+                            <p id="time" class="h5"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <script>
+            // Function to update the displayed datetime
+            function updateDatetime() {
+                var dateElement = document.getElementById('date');
+                var timeElement = document.getElementById('time');
+                
+                var now = new Date();
+                dateElement.textContent = now.toLocaleDateString();
+                timeElement.textContent = now.toLocaleTimeString();
+            }
+    
+            // Update the datetime immediately
+            updateDatetime();
+    
+            // Update the datetime every second (1000 milliseconds)
+            setInterval(updateDatetime, 1000);
+        </script>
+    </body>
+{% endblock %}

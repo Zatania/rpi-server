@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Student Attendance System - Add Teacher</title>
+{% endblock %}
+{% block content %}
+    <body>
+        <section class="sign-in">
+            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
+                <div class="col-xl-10">
+                    <div class="card" style="border-radius: 1rem;">
+                        <div class="card-body p-5">
+                            <div class="d-grid d-md-flex justify-content-md-start">
+                                <a href="{{ url_for('admin') }}">
+                                    <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
+                                </a>
+                            </div>
+                            <h1 class="card-title mb-5 text-center">Add Teacher</h1>
+                            <div class="mb-1">
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {% for message in messages %}
+                                                {{ message }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <form method="POST" action="/addteacher">
+                                <div class="row">
+                                    <div class="col-md-4 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="text" id="fullname floatingInput" class="form-control" placeholder="fullname" name="fullname"/>
+                                            <label class="form-label" for="fullname floatingInput">Full Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="text" id="username floatingInput" class="form-control" placeholder="username" name="username"/>
+                                            <label class="form-label" for="username floatingInput">Username</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="password" id="password floatingInput" class="form-control" placeholder="password" name="password"/>
+                                            <label class="form-label" for="password floatingInput">Password</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-grid d-flex justify-content-md-end">
+                                    <button class="btn btn-outline-primary" type="submit">Add User</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Student Attendance System - Login</title>
+{% endblock %}
+{% block content %}
+    <body>
+        <section class="sign-in">
+            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
+                <div class="card" style="border-radius: 1rem;">
+                    <form method="POST" action="/" class="card-body p-5">
+                        <h6 class="card-title mb-5 text-center">Student Attendance System</h6>
+                        <h1 class="mb-5">Login</h1>
+                        <div class="mb-1">
+                            {% with messages = get_flashed_messages() %}
+                                {% if messages %}
+                                    <div class="alert alert-danger" role="alert">
+                                        {% for message in messages %}
+                                            {{ message }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="mb-5">
+                            <div class="form-floating form-outline form-white mb-4">
+                                <input type="text" name="username" id="username floatingInput" class="form-control form-control-lg" placeholder="username" />
+                                <label class="form-label text-black" for="username floatingInput"><i class="fa-solid fa-user"></i> Username</label>
+                            </div>
+                            <div class="form-floating form-outline form-white mb-4">
+                                <input type="password" name="password" id="password floatingInput" class="form-control form-control-lg" placeholder="password" />
+                                <label class="form-label text-black" for="password floatingInput"><i class="fa-solid fa-lock"></i> Password</label>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-outline-dark btn-md px-5" type="submit">Login</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </body>
+{% endblock %}

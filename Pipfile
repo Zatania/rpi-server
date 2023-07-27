@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-login = "*"
+flask-sqlalchemy = "*"
+python-dotenv = "*"
+flask-wtf = "*"
+wtforms = "*"
+werkzeug = "*"
+adafruit-circuitpython-fingerprint = "*"
+adafruit-circuitpython-charlcd = "*"
+board = "*"
+pyserial = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
