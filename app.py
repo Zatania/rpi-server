@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
-import time
+from time import sleep
 import drivers
 import serial
 import adafruit_fingerprint
@@ -19,6 +19,9 @@ finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 
 ##### LCD #####
 display = drivers.Lcd()
+
+##### GSM #####
+sms = None
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -75,8 +78,9 @@ class History(db.Model, UserMixin):
     student_name = db.Column(db.String(1000), nullable=False)
     program = db.Column(db.String(255), nullable=False)
     year = db.Column(db.String(255), nullable=False)
+    course = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(255), default='Absent')
-    date_timein = db.Column(db.Date, default=date.today)
+    date_timein = db.Column(db.DateTime, default=datetime.now)
     
     def __repr__(self):
         return '<History %r>' % self.id
@@ -157,16 +161,113 @@ def dashboard():
             return redirect(url_for('admin'))
     else:
         return render_template("dashboard.html", fullname=current_user.fullname)
-    
+
+################ HISTORY ################
+@app.route('/history')
+@login_required
+def history():
+    if current_user.username == 'admin':
+            return redirect(url_for('admin'))
+    else:
+        histories = History.query.all()
+
+        return render_template("history.html", histories=histories)
 ################ ATTENDANCE ################
 @app.route('/attendance')
 @login_required
 def attendance():
     if current_user.username == 'admin':
-            return redirect(url_for('admin'))
+        return redirect(url_for('admin'))
     else:
         return render_template("attendance.html")
-    
+
+@app.route('/attendance/scan')
+@login_required
+def attendance_scan():
+    if current_user.username == 'admin':
+        return redirect(url_for('admin'))
+    else:
+        if get_fingerprint():
+            students = Students.query.filter_by(id=finger.finger_id).first()
+            number = students.parentphone
+            name = students.fullname
+            course = students.course
+            attendance = History(studentid=students.studentid, student_name=students.fullname, program=students.program, year=students.year, course=course, status='Present')
+
+            db.session.add(attendance)
+            db.session.commit()
+
+            if open_serial_port():
+                try:
+                    response = send_at_command('AT\r')
+                    print("AT Command response:", response)
+
+                    response = send_at_command('AT+CMGF=1\r')
+                    print("CMGF response:", response)
+
+                    response = send_at_command(f'AT+CMGS="{number}"\r')
+                    print("CMGS response:", response)
+
+                    response = send_at_command(f'Your child {name} has entered their {course} class. \x1A')
+                    print("Sending SMS response:", response)
+
+                except Exception as e:
+                    print("Error:", str(e))
+
+                finally:
+                    sms.close()
+                    print("Serial port is closed.")
+                    display.lcd_display_string("SMS Sent", 1)
+                    sleep(1)
+            else:
+                print("Cannot proceed as the serial port is not open.")
+
+            display.lcd_clear()
+            return redirect(url_for('attendance'))
+        else:
+            display.lcd_clear()
+            return redirect(url_for('attendance'))
+def open_serial_port():
+    global sms
+    try:
+        sms = serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1)
+        if sms.is_open:
+            print("Serial port is open.")
+            return True
+        else:
+            print("Serial port could not be opened.")
+            return False
+    except Exception as e:
+        print("Error:", str(e))
+        return False
+
+def send_at_command(command):
+    sms.write(command.encode())
+    sleep(0.5)
+    response = sms.readlines()
+    return b"".join(response).decode()
+
+def get_fingerprint():
+    display.lcd_display_string("Place finger", 1)
+    while finger.get_image() != adafruit_fingerprint.OK:
+        pass
+    display.lcd_clear()
+    display.lcd_display_string("Templating", 1)
+    if finger.image_2_tz(1) != adafruit_fingerprint.OK:
+        display.lcd_clear()
+        display.lcd_display_string("Not found.", 1)
+        sleep(1)
+        return False
+    display.lcd_display_string("Searching", 1)
+    if finger.finger_search() != adafruit_fingerprint.OK:
+        display.lcd_clear()
+        display.lcd_display_string("Not found.", 1)
+        sleep(1)
+        return False
+
+    display.lcd_clear()
+    display.lcd_display_string("Success", 1)
+    return True
 ################ STUDENTS ################
 @app.route('/students/list')
 @login_required
@@ -195,13 +296,21 @@ def students_add():
             year = request.form.get('year')
             parentphone = request.form.get('parentphone')
 
-            #
-            # Display message on the LCD while waiting for fingerprint scan
-            display.lcd_display_string("Adding New Student", 1)
-            display.lcd_display_string("Waiting for fingerprint scan", 2)
+            # Commit Data into Database
+            new_student = Students(fullname=fullname, course=course, studentid=studentid, department=department, program=program, year=year, teacher_name=current_user.fullname, parentphone=parentphone)
 
+            db.session.add(new_student)
+            db.session.commit()
+
+            # Query into Students and get ID
+            query = Students.query.filter_by(fullname=fullname).first()
+
+            location = query.id
+            
             # Wait for a finger to be read
-            enroll()
+            enroll(location)
+            sleep(2)
+            display.lcd_clear()
 
             return redirect(url_for('students_list'))
         return render_template("students-add.html", courses=courses)
@@ -210,70 +319,92 @@ def students_add():
 def enroll(location):
     for fingerimg in range(1, 3):
         if fingerimg == 1:
-            display.lcd_display_string("Place finger on sensor", 1)
+            display.lcd_display_string("Place finger", 1)
         else:
-            display.lcd_display_string("Place finger again", 1)
+            display.lcd_display_string("Place again", 1)
 
         while True:
             i = finger.get_image()
             if i == adafruit_fingerprint.OK:
-                print("Image taken")
+                display.lcd_display_string("Image taken", 1)
                 break
             if i == adafruit_fingerprint.NOFINGER:
-                print(".", end="")
+                display.lcd_display_string(".", 1)
             elif i == adafruit_fingerprint.IMAGEFAIL:
-                print("Imaging error")
-                return False
+                display.lcd_display_string("Imaging error", 1)
             else:
-                print("Other error")
-                return False
+                display.lcd_display_string("Other error", 1)
+            # Add a delay here to allow the user to see the error message
+            sleep(2)
+            display.lcd_clear()
 
-        print("Templating...", end="")
+        display.lcd_display_string("Templating...", 1)
         i = finger.image_2_tz(fingerimg)
         if i == adafruit_fingerprint.OK:
-            print("Templated")
+            display.lcd_display_string("Templated", 1)
         else:
             if i == adafruit_fingerprint.IMAGEMESS:
-                print("Image too messy")
+                display.lcd_display_string("Image too messy", 1)
             elif i == adafruit_fingerprint.FEATUREFAIL:
-                print("Could not identify features")
+                display.lcd_display_string("Could not identify features", 1)
             elif i == adafruit_fingerprint.INVALIDIMAGE:
-                print("Image invalid")
+                display.lcd_display_string("Image invalid", 1)
             else:
-                print("Other error")
-            return False
+                display.lcd_display_string("Other error", 1)
+            # Add a delay here to allow the user to see the error message
+            sleep(2)
+            display.lcd_clear()
 
         if fingerimg == 1:
-            print("Remove finger")
-            time.sleep(1)
+            display.lcd_display_string("Remove finger", 1)
+            sleep(1)
             while i != adafruit_fingerprint.NOFINGER:
                 i = finger.get_image()
 
-    print("Creating model...", end="")
+    display.lcd_display_string("Creating model...", 1)
     i = finger.create_model()
     if i == adafruit_fingerprint.OK:
-        print("Created")
+        display.lcd_display_string("Created", 1)
     else:
         if i == adafruit_fingerprint.ENROLLMISMATCH:
-            print("Prints did not match")
+            display.lcd_display_string("Prints did not match", 1)
         else:
-            print("Other error")
-        return False
+            display.lcd_display_string("Other error", 1)
+        # Add a delay here to allow the user to see the error message
+        sleep(2)
+        display.lcd_clear()
 
-    print("Storing model #%d..." % location, end="")
+    display.lcd_display_string("Storing model #%d..." % location, 1)
     i = finger.store_model(location)
     if i == adafruit_fingerprint.OK:
-        print("Stored")
+        display.lcd_display_string("Stored", 1)
     else:
         if i == adafruit_fingerprint.BADLOCATION:
-            print("Bad storage location")
+            display.lcd_display_string("Bad storage location", 1)
         elif i == adafruit_fingerprint.FLASHERR:
-            print("Flash storage error")
+            display.lcd_display_string("Flash storage error", 1)
         else:
-            print("Other error")
-        return False
+            display.lcd_display_string("Other error", 1)
+        # Add a delay here to allow the user to see the error message
+        sleep(2)
+        display.lcd_clear()
 
     return True
+
+@app.route('/clear-fingerprint')
+@login_required
+def clear_fingerprint():
+    if finger.empty_library() == adafruit_fingerprint.OK:
+        display.lcd_clear()
+        display.lcd_display_string("Library empty!", 1)
+        sleep(2)
+        display.lcd_clear()
+        return redirect(url_for('students_list'))
+    else:
+        display.lcd_clear()
+        print("Failed to empty library")
+        sleep(2)
+        display.lcd_clear()
 ################ COURSES ################    
 @app.route('/courses/list')
 @login_required
@@ -312,30 +443,34 @@ def courses_add():
 def admin():
     return render_template("admin.html", fullname=current_user.fullname)
 
-@app.route('/addteacher')
+@app.route('/teachers')
+@login_required
+def teachers():
+    teachers = User.query.all()
+
+    return render_template("teachers.html", teachers=teachers)
+
+@app.route('/teachers/add', methods=["POST", "GET"])
 @login_required
 def addteacher():
+    if request.method == "POST": 
+        fullname = request.form.get('fullname')
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User.query.filter_by(username=username).first()
+        
+        if user:
+            flash('Username Exists. Try another one.')
+            return redirect(url_for('addteacher'))
+        
+        new_user = User(fullname=fullname, username=username.lower(), password=generate_password_hash(password, method='sha256'))
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        return redirect(url_for('teachers'))
     return render_template("addteacher.html")
-
-@app.route('/addteacher', methods=["POST"])
-@login_required
-def addteacher_post():
-    fullname = request.form.get('fullname')
-    username = request.form.get('username')
-    password = request.form.get('password')
-
-    user = User.query.filter_by(username=username).first()
-    
-    if user:
-        flash('Username Exists. Try another one.')
-        return redirect(url_for('addteacher'))
-    
-    new_user = User(fullname=fullname, username=username.lower(), password=generate_password_hash(password, method='sha256'))
-
-    db.session.add(new_user)
-    db.session.commit()
-
-    return redirect(url_for('admin'))
 
 @app.route('/students')
 @login_required

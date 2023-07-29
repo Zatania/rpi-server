@@ -10,7 +10,7 @@
                     <div class="card" style="border-radius: 1rem;">
                         <div class="card-body p-5">
                             <div class="d-grid d-md-flex justify-content-md-start">
-                                <a href="{{ url_for('admin') }}">
+                                <a href="{{ url_for('teachers') }}">
                                     <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
                                 </a>
                             </div>
@@ -26,7 +26,7 @@
                                     {% endif %}
                                 {% endwith %}
                             </div>
-                            <form method="POST" action="/addteacher">
+                            <form method="POST" action="/teachers/add">
                                 <div class="row">
                                     <div class="col-md-4 mb-4">
                                         <div class="form-floating form-outline">
@@ -48,7 +48,7 @@
                                     </div>
                                 </div>
                                 <div class="d-grid d-flex justify-content-md-end">
-                                    <button class="btn btn-outline-primary" type="submit">Add User</button>
+                                    <button class="btn btn-outline-primary" type="submit">Add</button>
                                 </div>
                             </form>
                         </div>

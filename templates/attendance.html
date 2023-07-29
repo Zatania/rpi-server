@@ -12,6 +12,18 @@
                         <div class="card-body text-center">
                             <p id="date" class="h5"></p>
                             <p id="time" class="h5"></p>
+                            <div class="row mt-5">
+                                <div class="col-6 d-grid d-md-flex justify-content-md-center">
+                                    <a href="{{ url_for('dashboard') }}">
+                                        <button type="button" class="btn btn-outline-dark btn-sm">Return</button>
+                                    </a>
+                                </div>
+                                <div class="col-6 d-grid d-md-flex justify-content-md-center">
+                                    <a href="{{ url_for('attendance_scan') }}">
+                                        <button type="button" class="btn btn-outline-dark btn-sm">Attendance</button>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
