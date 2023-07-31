@@ -10,11 +10,22 @@
                     <div class="card" style="border-radius: 1rem;">
                         <div class="card-body p-5">
                             <div class="d-grid d-md-flex justify-content-md-start">
-                                <a href="{{ url_for('dashboard') }}">
+                                <a href="{{ url_for('courses') }}">
                                     <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
                                 </a>
                             </div>
                             <h1 class="card-title mb-5 text-center">Add Course</h1>
+                            <div class="mb-1">
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {% for message in messages %}
+                                                {{ message }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
                             <form method="POST" action="/courses/add" class="card-body">
                                 <div class="row">
                                     <div class="col-md-6 mb-4">
@@ -24,6 +35,14 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="number" name="course_units" id="course_units floatingInput" class="form-control" placeholder="course_units" required/>
+                                            <label class="form-label" for="course_units floatingInput">Course Units</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
                                         <div class="form-floating form-outline">
                                             <input type="text" name="course_name" id="course_name floatingInput" class="form-control" placeholder="course_name" required/>
                                             <label class="form-label" for="course_name floatingInput">Course Name</label>
@@ -35,26 +54,6 @@
                                         <div class="form-floating form-outline">
                                             <input type="text" name="course_description" id="course_description floatingInput" class="form-control" placeholder="course_description" required/>
                                             <label class="form-label" for="course_description floatingInput">Course Description</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-4">
-                                        <div class="form-floating form-outline">
-                                            <input type="number" name="course_units" id="course_units floatingInput" class="form-control" placeholder="course_units" required/>
-                                            <label class="form-label" for="course_units floatingInput">Course Units</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-4">
-                                        <div class="form-floating form-outline">
-                                            <select name="course_year" id="course_year floatingInput" class="form-control" placeholder="course_year">
-                                                <option selected value="" required>Choose...</option>
-                                                <option value="1st Year">1st Year</option>
-                                                <option value="2nd Year">2nd Year</option>
-                                                <option value="3rd Year">3rd Year</option>
-                                                <option value="4th Year">4th Year</option>
-                                            </select>
-                                            <label class="form-label" for="course_year floatingInput">Course Year</label>
                                         </div>
                                     </div>
                                 </div>

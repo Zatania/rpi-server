@@ -10,11 +10,22 @@
                     <div class="card" style="border-radius: 1rem;">
                         <div class="card-body p-5">
                             <div class="d-grid d-md-flex justify-content-md-start">
-                                <a href="{{ url_for('dashboard') }}">
+                                <a href="{{ url_for('students_list') }}">
                                     <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
                                 </a>
                             </div>
                             <h1 class="card-title mb-5 text-center">Add Student</h1>
+                            <div class="mb-1">
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {% for message in messages %}
+                                                {{ message }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
                             <form method="POST" action="/students/add" class="card-body">
                                 <div class="row">
                                     <div class="col-md-12 mb-4">

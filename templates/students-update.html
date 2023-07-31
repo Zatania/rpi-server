@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Student Attendance System - Add Student</title>
+{% endblock %}
+{% block content %}
+    <body>
+        <section class="sign-in">
+            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
+                <div class="col-xl-5">
+                    <div class="card" style="border-radius: 1rem;">
+                        <div class="card-body p-5">
+                            <div class="d-grid d-md-flex justify-content-md-start">
+                                <a href="{{ url_for('students_list') }}">
+                                    <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
+                                </a>
+                            </div>
+                            <h1 class="card-title mb-5 text-center">Update Student</h1>
+                            <div class="mb-1">
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {% for message in messages %}
+                                                {{ message }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <form method="POST" action="/students/update/{{ student.id }}" class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <select name="coursename" id="coursename floatingInput" class="form-control" placeholder="coursename">
+                                                <option selected value="">Choose...</option>
+                                                {% for course in courses %}
+                                                    {% if student.course == course.course_name %}
+                                                    <option value="{{ course.course_name }}" selected>{{ course.course_name }}</option>
+                                                    {% else %}
+                                                    <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                            <label class="form-label" for="coursename floatingInput">Course</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="text" name="fullname" id="fullname floatingInput" class="form-control" placeholder="fullname" required value="{{ student.fullname}}"/>
+                                            <label class="form-label" for="fullname floatingInput">Full Name</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="text" name="studentid" id="studentid floatingInput" class="form-control" placeholder="studentid" required value="{{ student.studentid}}"/>
+                                            <label class="form-label" for="studentid floatingInput">Student ID</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <select name="year" id="year floatingInput" class="form-control" placeholder="year">
+                                                <option selected value="" required>Choose...</option>
+                                                {% if student.year == '1st Year' %}
+                                                    <option value="1st Year" selected>1st Year</option>
+                                                    <option value="2nd Year">2nd Year</option>
+                                                    <option value="3rd Year">3rd Year</option>
+                                                    <option value="4th Year">4th Year</option>
+                                                {% elif student.year == '2nd Year' %}
+                                                    <option value="1st Year">1st Year</option>
+                                                    <option value="2nd Year"selected>2nd Year</option>
+                                                    <option value="3rd Year">3rd Year</option>
+                                                    <option value="4th Year">4th Year</option>
+                                                {% elif student.year == '3rd Year' %}
+                                                    <option value="1st Year">1st Year</option>
+                                                    <option value="2nd Year">2nd Year</option>
+                                                    <option value="3rd Year" selected>3rd Year</option>
+                                                    <option value="4th Year">4th Year</option>
+                                                {% elif student.year == '4th Year' %}
+                                                    <option value="1st Year">1st Year</option>
+                                                    <option value="2nd Year">2nd Year</option>
+                                                    <option value="3rd Year">3rd Year</option>
+                                                    <option value="4th Year" selected>4th Year</option>
+                                                {% else %}
+                                                    <option value="1st Year">1st Year</option>
+                                                    <option value="2nd Year">2nd Year</option>
+                                                    <option value="3rd Year">3rd Year</option>
+                                                    <option value="4th Year">4th Year</option>
+                                                {% endif %}
+                                            </select>
+                                            <label class="form-label" for="year floatingInput">Year Level</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <select name="department" id="department floatingInput" class="form-control" placeholder="department">
+                                                <option selected value="" required>Choose...</option>
+                                                {% if student.department == 'Business Education' %}
+                                                    <option value="Computer Education">Computer Education</option>
+                                                    <option value="Business Education" selected>Business Education</option>
+                                                {% elif student.department == 'Computer Education' %}
+                                                    <option value="Computer Education" selected>Computer Education</option>
+                                                    <option value="Business Education">Business Education</option>
+                                                {% else %}
+                                                    <option value="Computer Education" selected>Computer Education</option>
+                                                    <option value="Business Education">Business Education</option>
+                                                {% endif %}
+                                            </select>
+                                            <label class="form-label" for="department floatingInput">Department</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <select name="program" id="program floatingInput" class="form-control" placeholder="program">
+                                                <option selected value="" required>Choose...</option>
+                                                {% if student.program == 'BSBA-MM' %}
+                                                    <option value="BSBA - MM" selected>Bachelor of Science in Business Administration Major in Marketing Management</option>
+                                                    <option value="BSBA - FM">Bachelor of Science in Business Administration Major in Financial Management</option>
+                                                    <option value="BSIT">Bachelor of Science in Information Technology</option>
+                                                    <option value="BSCS">Bachelor of Science in Computer Science</option>
+                                                {% elif student.program == 'BSBA-FM' %}
+                                                    <option value="BSBA - MM">Bachelor of Science in Business Administration Major in Marketing Management</option>
+                                                    <option value="BSBA - FM" selected>Bachelor of Science in Business Administration Major in Financial Management</option>
+                                                    <option value="BSIT">Bachelor of Science in Information Technology</option>
+                                                    <option value="BSCS">Bachelor of Science in Computer Science</option>
+                                                {% elif student.program == 'BSIT' %}
+                                                    <option value="BSBA - MM">Bachelor of Science in Business Administration Major in Marketing Management</option>
+                                                    <option value="BSBA - FM">Bachelor of Science in Business Administration Major in Financial Management</option>
+                                                    <option value="BSIT" selected>Bachelor of Science in Information Technology</option>
+                                                    <option value="BSCS">Bachelor of Science in Computer Science</option>
+                                                {% elif student.program == 'BSCS' %}
+                                                    <option value="BSBA - MM">Bachelor of Science in Business Administration Major in Marketing Management</option>
+                                                    <option value="BSBA - FM">Bachelor of Science in Business Administration Major in Financial Management</option>
+                                                    <option value="BSIT">Bachelor of Science in Information Technology</option>
+                                                    <option value="BSCS" selected>Bachelor of Science in Computer Science</option>
+                                                {% else %}
+                                                    <option value="BSBA - MM">Bachelor of Science in Business Administration Major in Marketing Management</option>
+                                                    <option value="BSBA - FM">Bachelor of Science in Business Administration Major in Financial Management</option>
+                                                    <option value="BSIT">Bachelor of Science in Information Technology</option>
+                                                    <option value="BSCS">Bachelor of Science in Computer Science</option>
+                                                {% endif %}
+                                            </select>
+                                            <label class="form-label" for="program floatingInput">Program</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
+                                        <div class="form-floating form-outline">
+                                            <input type="number" maxlength="11" name="parentphone" id="parentphone floatingInput" class="form-control" placeholder="parentphone" value="{{ student.parentphone}}" required/>
+                                            <label class="form-label" for="parentphone floatingInput">Parent Phone Number (09xxxxxxxxx)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-grid d-lg-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-plus"></i> Update</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+{% endblock %}

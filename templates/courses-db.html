@@ -38,10 +38,10 @@
                                                     Course Units
                                                 </th>
                                                 <th scope="col">
-                                                    Course Year
+                                                    Course Teacher
                                                 </th>
                                                 <th scope="col">
-                                                    Course Teacher
+                                                    Actions
                                                 </th>
                                             </tr>
                                         </thead>
@@ -61,10 +61,15 @@
                                                     {{ course.course_units }}
                                                 </td>
                                                 <td>
-                                                    {{ course.course_year }}
+                                                    {{ course.course_teacher }}
                                                 </td>
                                                 <td>
-                                                    {{ course.course_teacher }}
+                                                    <a href="" class="btn btn-outline-info">
+                                                        <i class="fa-solid fa-file-pen"></i> Update
+                                                    </a>
+                                                    <a href="" class="btn btn-outline-danger">
+                                                        <i class="fa-solid fa-trash"></i> Delete
+                                                    </a>
                                                 </td>
                                             </tr>
                                             {% endfor %}

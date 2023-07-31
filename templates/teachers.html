@@ -32,6 +32,9 @@
                                                     Username
                                                 </th>
                                                 <th scope="col">
+                                                    Date Added
+                                                </th>
+                                                <th scope="col">
                                                     Actions
                                                 </th>
                                             </tr>
@@ -46,12 +49,15 @@
                                                         <td>
                                                             {{ teacher.username }}
                                                         </td>
+                                                        <td>
+                                                            {{ teacher.date_added.strftime('%Y-%m-%d  %H:%M:%S') }}
+                                                        </td>
                                                         <th>
-                                                            <a href="">
-                                                                <button type="button" class="btn btn-outline-info"><i class="fa-solid fa-file-pen"></i> Update</button>
+                                                            <a href="/teachers/update/{{ teacher.id}}" class="btn btn-outline-info">
+                                                                <i class="fa-solid fa-file-pen"></i> Update
                                                             </a>
-                                                            <a href="">
-                                                                <button type="button" class="btn btn-outline-danger"><i class="fa-solid fa-trash"></i> Delete</button>
+                                                            <a href="/teachers/delete/{{ teacher.id}}" class="btn btn-outline-danger">
+                                                                <i class="fa-solid fa-trash"></i> Delete
                                                             </a>
                                                         </th>
                                                     </tr>
