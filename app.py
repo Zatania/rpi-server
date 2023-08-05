@@ -244,9 +244,10 @@ def attendance():
     if current_user.username == 'admin':
         return redirect(url_for('admin'))
     else:
-        return render_template("attendance.html")
+        courses = Courses.query.filter_by(course_teacher=current_user.fullname)
+        return render_template("attendance.html", courses=courses)
 
-@app.route('/attendance/scan')
+@app.route('/attendance/scan', methods=["POST", "GET"])
 @login_required
 def attendance_scan():
     if current_user.username == 'admin':
@@ -273,7 +274,7 @@ def attendance_scan():
                     response = send_at_command(f'AT+CMGS="{number}"\r')
                     print("CMGS response:", response)
 
-                    response = send_at_command(f'Your child {name} has entered their {course} class. \x1A')
+                    response = send_at_command(f'Your child {name} has entered their {course} class. Time is {attendance.date_timein}. \x1A')
                     print("Sending SMS response:", response)
 
                 except Exception as e:
@@ -292,6 +293,7 @@ def attendance_scan():
         else:
             display.lcd_clear()
             return redirect(url_for('attendance'))
+
 def open_serial_port():
     global sms
     try:
@@ -313,6 +315,7 @@ def send_at_command(command):
     return b"".join(response).decode()
 
 def get_fingerprint():
+    display.lcd_clear()
     display.lcd_display_string("Place finger", 1)
     while finger.get_image() != adafruit_fingerprint.OK:
         pass
@@ -323,6 +326,7 @@ def get_fingerprint():
         display.lcd_display_string("Not found.", 1)
         sleep(1)
         return False
+    display.lcd_clear()
     display.lcd_display_string("Searching", 1)
     if finger.finger_search() != adafruit_fingerprint.OK:
         display.lcd_clear()
@@ -544,15 +548,13 @@ def students_update(id):
         display.lcd_display_string("Students Update", 4)
         return render_template("students-update.html", courses=courses, student=student)
 
+
 @app.route('/students/delete/<id>')
 @login_required
 def students_delete(id):
-    #Questionable whether to delete history of deleted student or not
-    student = Students.query.get_or_404(id)
-    history = History.query.get_or_404(student.id)
-
+    student = Students.query.filter_by(id=id).first()
     if current_user.username == 'admin':
-            return redirect(url_for('admin'))
+        return redirect(url_for('admin'))
     else:
         display.lcd_clear()
         display.lcd_display_string("Deleting Student", 1)
@@ -565,7 +567,13 @@ def students_delete(id):
             display.lcd_display_string("Deleted...", 2)
             sleep(2)
 
-        db.session.delete(history)
+        history = None
+
+        if student:
+            history = History.query.filter_by(studentid=student.studentid).first()
+
+        if history:
+            db.session.delete(history)
         db.session.delete(student)
 
         display.lcd_clear()
@@ -651,7 +659,7 @@ def courses_add():
         display.lcd_display_string("", 3)
         display.lcd_display_string("Add Course", 4)
         return render_template("courses-add.html")
-    
+
 ################ ADMIN DASHBOARD ################
 @app.route('/admin')
 @login_required
@@ -757,23 +765,47 @@ def updateteacher(id):
 @app.route('/teachers/delete/<id>')
 @login_required
 def deleteteacher(id):
-    if current_user.username == 'admin':
-        teacher = User.query.get_or_404(id)
-        student = Students.query.get_or_404(id)
-        history = History.query.get_or_404(student.id)
+    if current_user.username == 'admin':    
+        teacher = User.query.get(id)
+        if teacher is None:
+            abort(404)  # Return 404 Not Found error page
         
+        # Find all students associated with the teacher
+        students = Students.query.filter_by(teacher_name=teacher.fullname).all()
+
         display.lcd_clear()
         display.lcd_display_string("Deleting Teacher", 1)
-        display.lcd_display_string(f"{{ teacher.fullname }}", 2)
+        display.lcd_display_string(f"{teacher.fullname}", 2)
+        sleep(2)
 
+        for student in students:
+            if student.fingerprint_id:
+                # Delete the student's fingerprint ID
+                if finger.delete_model(student.fingerprint_id) == adafruit_fingerprint.OK:
+                    display.lcd_clear()
+                    display.lcd_display_string("Student Fingerprints", 1)
+                    display.lcd_display_string("Deleted...", 2)
+                    sleep(2)
+
+            # Delete the student's history if it exists
+            history = History.query.filter_by(studentid=student.studentid).first()
+            if history:
+                db.session.delete(history)
+
+            # Delete the student from the database
+            db.session.delete(student)
+        
+        # Delete the teacher from the database
         db.session.delete(teacher)
-
+        
         display.lcd_clear()
         display.lcd_display_string("Teacher Deleted...", 1)
+        sleep(2)
 
         db.session.commit()
 
         return redirect(url_for('teachers'))
+    
     return redirect(url_for('index'))
 
 @app.route('/students')

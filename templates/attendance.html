@@ -12,6 +12,19 @@
                         <div class="card-body text-center">
                             <p id="date" class="h5"></p>
                             <p id="time" class="h5"></p>
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="form-floating form-outline">
+                                        <select name="coursename" id="coursename floatingInput" class="form-control" placeholder="coursename">
+                                            <option selected value="">Choose...</option>
+                                            {% for course in courses %}
+                                            <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <label class="form-label" for="coursename floatingInput">Course</label>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="row mt-5">
                                 <div class="col-6 d-grid d-md-flex justify-content-md-center">
                                     <a href="{{ url_for('dashboard') }}">
