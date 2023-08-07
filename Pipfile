@@ -14,6 +14,7 @@ werkzeug = "*"
 adafruit-circuitpython-fingerprint = "*"
 board = "*"
 pyserial = "*"
+flask-excel = "*"
 
 [dev-packages]
 

@@ -8,7 +8,6 @@ from time import sleep
 import drivers
 import serial
 import adafruit_fingerprint
-import threading
 app = Flask(__name__)
 excel.init_excel(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
@@ -253,45 +252,51 @@ def attendance_scan():
     if current_user.username == 'admin':
         return redirect(url_for('admin'))
     else:
-        if get_fingerprint():
-            students = Students.query.filter_by(id=finger.finger_id).first()
-            number = students.parentphone
-            name = students.fullname
-            course = students.course
-            attendance = History(studentid=students.studentid, student_name=students.fullname, program=students.program, year=students.year, course=course, status='Present')
+        coursename = request.form.get('coursename')
+        studentquery = Students.query.filter_by(course=coursename)
+        if students.count() > 0:
+            if get_fingerprint():
+                students = studentquery.filter_by(id=finger.finger_id).first()
+                number = students.parentphone
+                name = students.fullname
+                course = students.course
+                attendance = History(studentid=students.studentid, student_name=students.fullname, program=students.program, year=students.year, course=course, status='Present')
 
-            db.session.add(attendance)
-            db.session.commit()
+                db.session.add(attendance)
+                db.session.commit()
 
-            if open_serial_port():
-                try:
-                    response = send_at_command('AT\r')
-                    print("AT Command response:", response)
+                if open_serial_port():
+                    try:
+                        response = send_at_command('AT\r')
+                        print("AT Command response:", response)
 
-                    response = send_at_command('AT+CMGF=1\r')
-                    print("CMGF response:", response)
+                        response = send_at_command('AT+CMGF=1\r')
+                        print("CMGF response:", response)
 
-                    response = send_at_command(f'AT+CMGS="{number}"\r')
-                    print("CMGS response:", response)
+                        response = send_at_command(f'AT+CMGS="{number}"\r')
+                        print("CMGS response:", response)
 
-                    response = send_at_command(f'Your child {name} has entered their {course} class. Time is {attendance.date_timein}. \x1A')
-                    print("Sending SMS response:", response)
+                        response = send_at_command(f'Your child {name} has entered their {course} class. Time is {attendance.date_timein}. \x1A')
+                        print("Sending SMS response:", response)
 
-                except Exception as e:
-                    print("Error:", str(e))
+                    except Exception as e:
+                        print("Error:", str(e))
 
-                finally:
-                    sms.close()
-                    print("Serial port is closed.")
-                    display.lcd_display_string("SMS Sent", 1)
-                    sleep(1)
+                    finally:
+                        sms.close()
+                        print("Serial port is closed.")
+                        display.lcd_display_string("SMS Sent", 1)
+                        sleep(1)
+                else:
+                    print("Cannot proceed as the serial port is not open.")
+
+                display.lcd_clear()
+                return redirect(url_for('attendance'))
             else:
-                print("Cannot proceed as the serial port is not open.")
-
-            display.lcd_clear()
-            return redirect(url_for('attendance'))
+                display.lcd_clear()
+                return redirect(url_for('attendance'))
         else:
-            display.lcd_clear()
+            flash("No students found for this course.")
             return redirect(url_for('attendance'))
 
 def open_serial_port():

@@ -7,8 +7,19 @@
         <section class="index">
             <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
                 <div class="card" style="border-radius: 1rem;">
-                    <div class="card-body p-5">
+                    <form method="POST" action="/students/add" class="card-body p-5">
                         <h1 class="card-title mb-5 text-center">Attendance</h1>
+                            <div class="mb-1">
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {% for message in messages %}
+                                                {{ message }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
                         <div class="card-body text-center">
                             <p id="date" class="h5"></p>
                             <p id="time" class="h5"></p>
@@ -33,12 +44,12 @@
                                 </div>
                                 <div class="col-6 d-grid d-md-flex justify-content-md-center">
                                     <a href="{{ url_for('attendance_scan') }}">
-                                        <button type="button" class="btn btn-outline-dark btn-sm">Attendance</button>
+                                        <button type="submit" class="btn btn-outline-dark btn-sm">Attendance</button>
                                     </a>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </section>

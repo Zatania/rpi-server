@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c979a3cc21fe0a9a590071028dfdfad87e651f5e351dfa5a7414b886836ae4d9"
+            "sha256": "ebe4e5e95e65f0ab42a659665e33199845da3fda234f01c585b5b82ea418723e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -18,11 +18,11 @@
     "default": {
         "adafruit-blinka": {
             "hashes": [
-                "sha256:649d12d7cf4b2660c295d4a6d79e935200db7aeeb3df2469db648eddf982ee8b",
-                "sha256:ca7188922a216240d5da24e987cf7fb1c696df4bccfef78e9db21ea5a1e8ba7e"
+                "sha256:9710ed5b6fe216d2a40c9bd869ae14123bb9a5c12489b9579645395537477922",
+                "sha256:a2cc53fb2157427e5271db6656f1635726929f1b81dbc817893e707f1b2a54ce"
             ],
             "markers": "python_full_version >= '3.7.0'",
-            "version": "==8.20.0"
+            "version": "==8.20.1"
         },
         "adafruit-circuitpython-busdevice": {
             "hashes": [
@@ -55,10 +55,10 @@
         },
         "adafruit-platformdetect": {
             "hashes": [
-                "sha256:9dd2012f7eb707ca7a88cbfadedaaaa95682f9956c2d7bb3fec5e9744a71e9a7",
-                "sha256:e36606f9baf1282a35eb1a7bdbe1219829200010b60401583564caa934f58de1"
+                "sha256:6cbc0f9ca2ce764f2c70a178850824057468cf43e1ebfa5c44b94974df9c0e80",
+                "sha256:9790f97c4b1db6139d06497927ec1e98489ad73a81b1238df30f7d44088b3236"
             ],
-            "version": "==3.47.0"
+            "version": "==3.49.0"
         },
         "adafruit-pureio": {
             "hashes": [
@@ -84,6 +84,14 @@
             "index": "pypi",
             "version": "==1.0"
         },
+        "chardet": {
+            "hashes": [
+                "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7",
+                "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"
+            ],
+            "markers": "python_version >= '3.7'",
+            "version": "==5.2.0"
+        },
         "click": {
             "hashes": [
                 "sha256:48ee849951919527a045bfe3bf7baa8a959c423134e1a5b98c05c20ba75a1cbd",
@@ -107,6 +115,14 @@
             ],
             "index": "pypi",
             "version": "==2.3.2"
+        },
+        "flask-excel": {
+            "hashes": [
+                "sha256:260b88c9101de78b00abbdae161e84f6466d24e1c5081583764877e8a26085cc",
+                "sha256:b82ddfe6319ecf2f796ada9966737ac8eaf9a99d6bce773f8acdc08acd7e9fae"
+            ],
+            "index": "pypi",
+            "version": "==0.0.7"
         },
         "flask-login": {
             "hashes": [
@@ -214,6 +230,13 @@
             "markers": "python_version >= '3.7'",
             "version": "==3.1.2"
         },
+        "lml": {
+            "hashes": [
+                "sha256:57a085a29bb7991d70d41c6c3144c560a8e35b4c1030ffb36d85fa058773bcc5",
+                "sha256:ec06e850019942a485639c8c2a26bdb99eae24505bee7492b649df98a0bed101"
+            ],
+            "version": "==0.1.0"
+        },
         "markupsafe": {
             "hashes": [
                 "sha256:05fb21170423db021895e1ea1e1f3ab3adb85d1c2333cbc2310f2a26bc77272e",
@@ -269,6 +292,29 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==2.1.3"
+        },
+        "pyexcel": {
+            "hashes": [
+                "sha256:ddc6904512bfa2ecda509fb3b58229bb30db14498632fd9e7a5ba7bbfb02ed1b",
+                "sha256:fbf0eee5d93b96cef6f19a9f00703f22c0a64f19728d91b95428009a52129709"
+            ],
+            "markers": "python_version >= '3.6'",
+            "version": "==0.7.0"
+        },
+        "pyexcel-io": {
+            "hashes": [
+                "sha256:19ff1d599a8a6c0982e4181ef86aa50e1f8d231410fa7e0e204d62e37551c1d6",
+                "sha256:f6084bf1afa5fbf4c61cf7df44370fa513821af188b02e3e19b5efb66d8a969f"
+            ],
+            "markers": "python_version >= '3.6'",
+            "version": "==0.6.6"
+        },
+        "pyexcel-webio": {
+            "hashes": [
+                "sha256:039538f1b35351f1632891dde29ef4d7fba744e217678ebb5a501336e28ca265",
+                "sha256:3583cf7dcddb747520a8a90e93cf07b0584878b56b3c41c46d132b458a6cfd00"
+            ],
+            "version": "==0.1.4"
         },
         "pyftdi": {
             "hashes": [
@@ -348,6 +394,13 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==2.0.19"
+        },
+        "texttable": {
+            "hashes": [
+                "sha256:290348fb67f7746931bcdfd55ac7584ecd4e5b0846ab164333f0794b121760f2",
+                "sha256:b7b68139aa8a6339d2c320ca8b1dc42d13a7831a346b446cb9eb385f0c76310c"
+            ],
+            "version": "==1.6.7"
         },
         "typing-extensions": {
             "hashes": [
