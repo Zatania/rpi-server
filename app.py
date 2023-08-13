@@ -5,6 +5,8 @@ from flask_login import UserMixin, LoginManager, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from time import sleep
+import random
+import string
 import drivers
 import serial
 import adafruit_fingerprint
@@ -27,62 +29,66 @@ display = drivers.Lcd()
 ##### GSM #####
 sms = None
 
-class User(db.Model, UserMixin):
-    __tablename__ = 'user'
+class Teacher(db.Model, UserMixin):
+    __tablename__ = 'teacher'
     id = db.Column(db.Integer, primary_key=True)
 
+    lastname = db.Column(db.String(255), nullable=False)
+    firstname = db.Column(db.String(255), nullable=False)
+    middlename = db.Column(db.String(255))
+    gender = db.Column(db.String(255), nullable=False)
+    teacher_id = db.Column(db.String(255), unique=True, nullable=False)
     username = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     fullname = db.Column(db.String(1000), nullable=False)
+    courses = db.relationship('Course', backref='teacher', lazy=True)
     date_added = db.Column(db.DateTime, default=now)
 
-    def __repr__(self):
-        return '<User %r>' % self.id
 
-class Courses(db.Model, UserMixin):
-    __tablename__ = 'courses'
+    def generate_username(self):
+        random_numbers = ''.join(random.choices(string.digits, k=4))
+        self.username = self.last_name.lower() + self.first_name[0].lower() + random_numbers
+    def __repr__(self):
+        return '<Teacher %r>' % self.id
+
+class Course(db.Model, UserMixin):
+    __tablename__ = 'course'
     id = db.Column(db.Integer, primary_key=True)
 
     course_name = db.Column(db.String(255), nullable=False)
     course_code = db.Column(db.String(255), nullable=False)
-    course_description = db.Column(db.String(1000), nullable=False)
-    course_units = db.Column(db.String(255), nullable=False)
-    course_teacher = db.Column(db.ForeignKey('user.fullname'), nullable=False)
+    course_description = db.Column(db.Text)
+    course_units = db.Column(db.Integer)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     date_added = db.Column(db.DateTime, default=now)
 
-    teacher = db.relationship('User', foreign_keys=course_teacher)
     def __repr__(self):
         return '<Courses %r>' % self.id
     
-class Students(db.Model, UserMixin):
-    __tablename__ = 'students'
+class Student(db.Model, UserMixin):
+    __tablename__ = 'student'
     id = db.Column(db.Integer, primary_key=True)
 
     fingerprint_id = db.Column(db.Integer, nullable=False)
-    fullname = db.Column(db.String(1000), nullable=False)
-    course = db.Column(db.String(255), nullable=False)
-    studentid = db.Column(db.String(255), nullable=False)
-    department = db.Column(db.String(255), nullable=False)
-    program = db.Column(db.String(255), nullable=False)
-    year = db.Column(db.String(255), nullable=False)
-    parentphone = db.Column(db.String(255), nullable=False)
-    teacher_name = db.Column(db.String(1000), db.ForeignKey('user.fullname'), nullable=False)
+    lastname = db.Column(db.String(255), nullable=False)
+    firstname = db.Column(db.String(255), nullable=False)
+    middlename = db.Column(db.String(255))
+    student_id = db.Column(db.String(255), unique=True, nullable=False)
+    parent_phone = db.Column(db.String(255), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     date_added = db.Column(db.DateTime, default=now)
 
-    teacher = db.relationship('User', foreign_keys=teacher_name)
-
     def __repr__(self):
-        return '<Students %r>' % self.id
+        return '<Student %r>' % self.id
 
-class History(db.Model, UserMixin):
-    __tablename__ = 'history'
+class AttendanceHistory(db.Model, UserMixin):
+    __tablename__ = 'attendacehistory'
     id = db.Column(db.Integer, primary_key=True)
 
-    studentid = db.Column(db.String(255), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     student_name = db.Column(db.String(1000), nullable=False)
-    program = db.Column(db.String(255), nullable=False)
-    year = db.Column(db.String(255), nullable=False)
     course = db.Column(db.String(255), nullable=False)
+    course_teacher = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(255), default='Absent')
     date_timein = db.Column(db.DateTime, default=now)
     
@@ -106,12 +112,11 @@ def db_seed():
     print('Database seeded!')
 
 login_manager = LoginManager()
-login_manager.login_view = 'index.html'
 login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return Teacher.query.get(int(user_id))
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
@@ -124,7 +129,31 @@ def index():
         if current_user.username == 'admin':
             return redirect(url_for('admin'))
         else:
-            return redirect(url_for('dashboard'))
+            if request.method == "POST":
+                username = request.form.get('username')
+                password = request.form.get('password')
+
+                user = User.query.filter_by(username=username.lower()).first()
+
+                if user and check_password_hash(user.password, password):
+                    login_user(user)
+
+                    if user.username == 'admin':
+                        display.lcd_clear()
+                        display.lcd_display_string("Logging in...", 1)
+                        sleep(2)
+                        display.lcd_clear()
+                        return redirect(url_for('admin'))
+                    else:
+                        display.lcd_clear()
+                        display.lcd_display_string("Logging in...", 1)
+                        sleep(2)
+                        display.lcd_clear()
+                        return redirect(url_for('dashboard'))
+                else:
+                    flash('Please check your login details and try again.')
+                    return redirect(url_for('index'))
+                
     display.lcd_display_string("Student Attendance", 1)
     display.lcd_display_string("System", 2)
     display.lcd_display_string("Please login", 4)
@@ -132,34 +161,6 @@ def index():
 
 @app.route('/', methods=["POST", "GET"])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
-    if request.method == "POST":
-        username = request.form.get('username')
-        password = request.form.get('password')
-
-        user = User.query.filter_by(username=username.lower()).first()
-
-        if user and check_password_hash(user.password, password):
-            login_user(user)
-
-            if user.username == 'admin':
-                display.lcd_clear()
-                display.lcd_display_string("Logging in...", 1)
-                sleep(2)
-                display.lcd_clear()
-                return redirect(url_for('admin'))
-            else:
-                display.lcd_clear()
-                display.lcd_display_string("Logging in...", 1)
-                sleep(2)
-                display.lcd_clear()
-                return redirect(url_for('dashboard'))
-        else:
-            flash('Please check your login details and try again.')
-
-    return redirect(url_for('index'))
 
 @app.route('/logout')
 @login_required
