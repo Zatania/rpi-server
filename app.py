@@ -1,6 +1,7 @@
 from flask import Flask, render_template, url_for, request, redirect, flash, after_this_request
 import flask_excel as excel
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -10,6 +11,7 @@ import string
 import drivers
 import serial
 import adafruit_fingerprint
+import RPi.GPIO as GPIO
 app = Flask(__name__)
 excel.init_excel(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
@@ -29,6 +31,11 @@ display = drivers.Lcd()
 ##### GSM #####
 sms = None
 
+##### BUTTON ######
+GPIO.setmode(GPIO.BOARD)
+BUTTON_PIN = 12  # Change this to the GPIO pin you're using
+GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
 class Teacher(db.Model, UserMixin):
     __tablename__ = 'teacher'
     id = db.Column(db.Integer, primary_key=True)
@@ -40,14 +47,8 @@ class Teacher(db.Model, UserMixin):
     teacher_id = db.Column(db.String(255), unique=True, nullable=False)
     username = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    fullname = db.Column(db.String(1000), nullable=False)
-    courses = db.relationship('Course', backref='teacher', lazy=True)
     date_added = db.Column(db.DateTime, default=now)
 
-
-    def generate_username(self):
-        random_numbers = ''.join(random.choices(string.digits, k=4))
-        self.username = self.last_name.lower() + self.first_name[0].lower() + random_numbers
     def __repr__(self):
         return '<Teacher %r>' % self.id
 
@@ -59,7 +60,7 @@ class Course(db.Model, UserMixin):
     course_code = db.Column(db.String(255), nullable=False)
     course_description = db.Column(db.Text)
     course_units = db.Column(db.Integer)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    course_teacher = db.Column(db.String(255))
     date_added = db.Column(db.DateTime, default=now)
 
     def __repr__(self):
@@ -75,7 +76,8 @@ class Student(db.Model, UserMixin):
     middlename = db.Column(db.String(255))
     student_id = db.Column(db.String(255), unique=True, nullable=False)
     parent_phone = db.Column(db.String(255), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    teacher_name = db.Column(db.String(255), nullable=False)
+    course_name = db.Column(db.String(255), nullable=False)
     date_added = db.Column(db.DateTime, default=now)
 
     def __repr__(self):
@@ -106,7 +108,7 @@ def db_drop():
 @app.cli.command('create-admin')
 def db_seed():
     hashed_password = generate_password_hash('admin')
-    user1 = User(username='admin', password=hashed_password, fullname='Admin')
+    user1 = Teacher(lastname='Account', firstname='Admin', gender='Neutral', teacher_id='00000000', username='admin', password=hashed_password)
     db.session.add(user1)
     db.session.commit()
     print('Database seeded!')
@@ -120,47 +122,48 @@ def load_user(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
-    return redirect(url_for('index'))
+    return redirect(url_for('error404'))
 
 ################ LOGIN/LOGOUT ################
-@app.route('/')
+@app.route('/', methods=["POST", "GET"])
 def index():
     if current_user.is_authenticated:
         if current_user.username == 'admin':
             return redirect(url_for('admin'))
         else:
-            if request.method == "POST":
-                username = request.form.get('username')
-                password = request.form.get('password')
+            return redirect(url_for('dashboard'))
+    if request.method == "POST":
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-                user = User.query.filter_by(username=username.lower()).first()
+        user = Teacher.query.filter_by(username=username.lower()).first()
 
-                if user and check_password_hash(user.password, password):
-                    login_user(user)
+        if user and check_password_hash(user.password, password):
 
-                    if user.username == 'admin':
-                        display.lcd_clear()
-                        display.lcd_display_string("Logging in...", 1)
-                        sleep(2)
-                        display.lcd_clear()
-                        return redirect(url_for('admin'))
-                    else:
-                        display.lcd_clear()
-                        display.lcd_display_string("Logging in...", 1)
-                        sleep(2)
-                        display.lcd_clear()
-                        return redirect(url_for('dashboard'))
-                else:
-                    flash('Please check your login details and try again.')
-                    return redirect(url_for('index'))
+            if user.username == 'admin':
+                login_user(user)
+                next_page = request.args.get('next')
+                display.lcd_clear()
+                display.lcd_display_string("Logging in...", 1)
+                sleep(2)
+                display.lcd_clear()
+                return redirect(next_page or url_for('admin'))
+            else:
+                login_user(user)
+                next_page = request.args.get('next')
+                display.lcd_clear()
+                display.lcd_display_string("Logging in...", 1)
+                sleep(2)
+                display.lcd_clear()
+                return redirect(next_page or url_for('dashboard'))
+        else:
+            flash('Please check your login details and try again.')
+            return redirect(url_for('index'))
                 
     display.lcd_display_string("Student Attendance", 1)
     display.lcd_display_string("System", 2)
     display.lcd_display_string("Please login", 4)
     return render_template("login.html")
-
-@app.route('/', methods=["POST", "GET"])
-def login():
 
 @app.route('/logout')
 @login_required
@@ -179,127 +182,123 @@ def dashboard():
     if current_user.username == 'admin':
             return redirect(url_for('admin'))
     else:
+        courses = Course.query.filter_by(course_teacher=current_user.firstname+' '+current_user.lastname)
+        students = Student.query.filter_by(teacher_name=current_user.firstname+' '+current_user.lastname).order_by(desc(Student.date_added)).all()
+        histories = AttendanceHistory.query.filter_by(course_teacher=current_user.firstname+' '+current_user.lastname).order_by(desc(AttendanceHistory.date_timein)).all()
         display.lcd_clear()
         display.lcd_display_string("Student Attendance", 1)
         display.lcd_display_string("System", 2)
         display.lcd_display_string("Welcome Teacher", 3)
-        display.lcd_display_string(f"{current_user.fullname}", 4)
-        return render_template("dashboard.html", fullname=current_user.fullname, id=current_user.id)
+        display.lcd_display_string(f"{current_user.firstname + ' ' + current_user.lastname}", 4)
+        return render_template("dashboard.html", fullname=current_user.firstname+' '+current_user.lastname, id=current_user.id, courses=courses, students=students, histories=histories)
 
-################ HISTORY ################
-@app.route('/history/<id>')
+@app.route('/attendance/<code>')
 @login_required
-def history(id):
-    teacher = User.query.get_or_404(id)
-    students = Students.query.filter_by(teacher_name=teacher.fullname).all()
-    student_histories = {}
-    histories = []  # Initialize the histories list before the loop
-
-    for student in students:
-        # Fetch student histories and extend the list
-        student_histories = History.query.filter_by(studentid=student.studentid).all()
-        histories.extend(student_histories)
-
+def attendance_scan(code):
     if current_user.username == 'admin':
         return redirect(url_for('admin'))
     else:
-        display.lcd_clear()
-        display.lcd_display_string("Student Attendance", 1)
-        display.lcd_display_string("System", 2)
-        display.lcd_display_string("", 3)
-        display.lcd_display_string("Attendance History", 4)
-        return render_template("history.html", histories=histories, id=teacher.id)
-
-
-##### EXCEL EXPORT #####
-@app.route('/download/<id>', methods=["GET"])
-@login_required
-def download(id):
-    teacher = User.query.get_or_404(id)
-    students = Students.query.filter_by(teacher_name=teacher.fullname).all()
-    student_histories = {}
-    histories = []  # Initialize the histories list before the loop
-
-    for student in students:
-        # Fetch student histories and extend the list
-        student_histories = History.query.filter_by(studentid=student.studentid).all()
-        histories.extend(student_histories)
-
-    if current_user.username == 'admin':
-        return redirect(url_for('admin'))
-    else:
-        display.lcd_clear()
-        display.lcd_display_string("Downloading History...", 1)
-        sleep(2)
-        column_names = ['id','studentid', 'student_name', 'program', 'year', 'course', 'status', 'date_timein']
-        response = excel.make_response_from_query_sets(histories, column_names, "xlsx", file_name="Student Attendance")
-        display.lcd_clear()
-        display.lcd_display_string("History Downloaded", 1)
-        sleep(2)
+        courses = Course.query.filter_by(course_teacher=current_user.firstname+' '+current_user.lastname)
+        histories = AttendanceHistory.query.filter_by(course_teacher=current_user.firstname+' '+current_user.lastname)
         
-        return response
-@app.route('/attendance')
-@login_required
-def attendance():
-    if current_user.username == 'admin':
-        return redirect(url_for('admin'))
-    else:
-        courses = Courses.query.filter_by(course_teacher=current_user.fullname)
-        return render_template("attendance.html", courses=courses)
+        course_query = Course.query.filter_by(course_code=code).first()
+                
+        if course_query:
+            coursename = course_query.course_name
+            studentquery = Student.query.filter_by(course_name=coursename)
 
-@app.route('/attendance/scan', methods=["POST", "GET"])
-@login_required
-def attendance_scan():
-    if current_user.username == 'admin':
-        return redirect(url_for('admin'))
-    else:
-        coursename = request.form.get('coursename')
-        studentquery = Students.query.filter_by(course=coursename)
-        if students.count() > 0:
-            if get_fingerprint():
-                students = studentquery.filter_by(id=finger.finger_id).first()
-                number = students.parentphone
-                name = students.fullname
-                course = students.course
-                attendance = History(studentid=students.studentid, student_name=students.fullname, program=students.program, year=students.year, course=course, status='Present')
+            today = now
 
-                db.session.add(attendance)
-                db.session.commit()
+            total_students = studentquery.count()
+            check_present = AttendanceHistory.query.filter_by(course=coursename, date_timein=today, status='Present').count() == total_students
 
-                if open_serial_port():
-                    try:
-                        response = send_at_command('AT\r')
-                        print("AT Command response:", response)
+            if not check_present:
+                for student in studentquery:
+                    student_id = student.student_id
+                    fullname = f"{student.firstname} {student.lastname}"
+                    course = student.course_name
+                    course_teacher = student.teacher_name
 
-                        response = send_at_command('AT+CMGF=1\r')
-                        print("CMGF response:", response)
+                    attendance = AttendanceHistory(
+                        student_id=student_id,
+                        student_name=fullname,
+                        course=course,
+                        course_teacher=course_teacher,
+                        status='Absent'
+                    )
 
-                        response = send_at_command(f'AT+CMGS="{number}"\r')
-                        print("CMGS response:", response)
-
-                        response = send_at_command(f'Your child {name} has entered their {course} class. Time is {attendance.date_timein}. \x1A')
-                        print("Sending SMS response:", response)
-
-                    except Exception as e:
-                        print("Error:", str(e))
-
-                    finally:
-                        sms.close()
-                        print("Serial port is closed.")
-                        display.lcd_display_string("SMS Sent", 1)
-                        sleep(1)
-                else:
-                    print("Cannot proceed as the serial port is not open.")
-
-                display.lcd_clear()
-                return redirect(url_for('attendance'))
+                    db.session.add(attendance)
+                    db.session.commit()
             else:
                 display.lcd_clear()
-                return redirect(url_for('attendance'))
-        else:
-            flash("No students found for this course.")
-            return redirect(url_for('attendance'))
+                display.lcd_display_string("All Students", 1)
+                display.lcd_display_string("are present.", 2)
+                sleep(2)
+                GPIO.cleanup()
+                return redirect(url_for('index'))
 
+        display.lcd_clear()
+        display.lcd_display_string("Press button to", 1)
+        display.lcd_display_string("take attendance", 2)
+        sleep(2)
+        while True:
+            try:
+                GPIO.wait_for_edge(BUTTON_PIN, GPIO.FALLING)
+                display.lcd_clear()
+                display.lcd_display_string("Button pressed.", 2)
+                sleep(2)
+                if studentquery.count() > 0:
+                    if get_fingerprint():
+                        students = studentquery.filter_by(fingerprint_id=finger.finger_id).first()
+                        number = students.parent_phone
+                        studentid = students.student_id
+                        fullname = students.firstname+' '+students.lastname
+                        course = students.course_name
+                        course_teacher = students.teacher_name
+                        attendance = AttendanceHistory.query.filter_by(student_id=studentid, student_name=fullname, course=course, course_teacher=course_teacher, date_timein=today).first()
+
+                        if attendance:
+                            attendance.status = 'Present'
+
+                            db.session.commit()
+
+                            if open_serial_port():
+                                try:
+                                    response = send_at_command('AT\r')
+                                    print("AT Command response:", response)
+
+                                    response = send_at_command('AT+CMGF=1\r')
+                                    print("CMGF response:", response)
+
+                                    response = send_at_command(f'AT+CMGS="{number}"\r')
+                                    print("CMGS response:", response)
+
+                                    response = send_at_command(f'Your child, {fullname}, has entered their {course} class. The time is {attendance.date_timein}. \x1A')
+                                    print("Sending SMS response:", response)
+
+                                except Exception as e:
+                                    print("Error:", str(e))
+
+                                finally:
+                                    sms.close()
+                                    print("Serial port is closed.")
+                                    display.lcd_display_string("SMS Sent", 1)
+                                    sleep(1)
+                        else:
+                            print("Cannot proceed as the serial port is not open.")
+
+                        display.lcd_clear()
+                    return redirect(url_for('attendance_scan', code=code))
+                else:
+                    display.lcd_clear()
+                    display.lcd_display_string("No student found.", 1)
+                    sleep(2)
+                    return redirect(url_for('attendance_scan', code=code))
+            except KeyboardInterrupt:
+                GPIO.cleanup()
+                sys.exit()
+
+        return render_template("attendance.html", courses=courses, histories=histories)
 def open_serial_port():
     global sms
     try:
@@ -343,42 +342,26 @@ def get_fingerprint():
     display.lcd_clear()
     display.lcd_display_string("Success", 1)
     return True
-################ STUDENTS ################
-@app.route('/students/list')
-@login_required
-def students_list():
-    if current_user.username == 'admin':
-            return redirect(url_for('admin'))
-    else:
-        display.lcd_clear()
-        display.lcd_display_string("Student Attendance", 1)
-        display.lcd_display_string("System", 2)
-        display.lcd_display_string("", 3)
-        display.lcd_display_string("Students List", 4)
-        students = Students.query.filter_by(teacher_name=current_user.fullname).order_by(Students.date_added).all()
-
-        return render_template("students-db.html", students=students)
 
 @app.route('/students/add', methods=["POST", "GET"])
 @login_required
 def students_add():
     MAX_FINGERPRINT_ID = 162
-    courses = Courses.query.filter_by(course_teacher=current_user.fullname)
+    courses = Course.query.filter_by(course_teacher=current_user.firstname+' '+current_user.lastname)
 
     if current_user.username == 'admin':
             return redirect(url_for('admin'))
     else:
         if request.method == "POST":
-            fullname = request.form.get('fullname')
-            course = request.form.get('coursename')
-            studentid = request.form.get('studentid')
-            department = request.form.get('department')
-            program = request.form.get('program')
-            year = request.form.get('year')
+            studentid = request.form.get('student_id')
+            lastname = request.form.get('lastname')
+            firstname = request.form.get('firstname')
+            middlename = request.form.get('middlename')
+            course = request.form.get('course_name')
             parentphone = request.form.get('parentphone')
 
             #Checking
-            student_check = Students.query.filter_by(studentid=studentid).first()
+            student_check = Student.query.filter_by(student_id=studentid).first()
             
             if student_check:
                 flash('Student Exists. Try again.')
@@ -390,7 +373,7 @@ def students_add():
 
             # Check if the fingerprint_id is available
             available_fingerprint = None
-            existing_students = Students.query.all()
+            existing_students = Student.query.all()
             all_fingerprint_ids = set(student.fingerprint_id for student in existing_students)
 
             for i in range(1, MAX_FINGERPRINT_ID + 1):
@@ -402,13 +385,13 @@ def students_add():
                 return "No available fingerprint_id, cannot add a new student."
 
             # Commit Data into Database
-            new_student = Students(fullname=fullname, course=course, studentid=studentid, department=department, program=program, year=year, teacher_name=current_user.fullname, parentphone=parentphone, fingerprint_id=available_fingerprint)
+            new_student = Student(lastname=lastname, firstname=firstname, middlename=middlename, course_name=course, student_id=studentid, teacher_name=current_user.firstname+' '+current_user.lastname, parent_phone=parentphone, fingerprint_id=available_fingerprint)
 
             db.session.add(new_student)
             db.session.commit()
 
             # Query into Students and get ID
-            query = Students.query.filter_by(fullname=fullname).first()
+            query = Student.query.filter_by(student_id=studentid).first()
 
             location = query.fingerprint_id
             
@@ -417,7 +400,7 @@ def students_add():
             sleep(2)
             display.lcd_clear()
 
-            return redirect(url_for('students_list'))
+            return redirect(url_for('index'))
             
         display.lcd_clear()
         display.lcd_display_string("Student Attendance", 1)
@@ -494,16 +477,16 @@ def enroll(location):
             display.lcd_display_string("Fingerprint", 1)
             display.lcd_display_string("Created", 2)
             break
-        else:
-            if i == adafruit_fingerprint.ENROLLMISMATCH:
-                display.lcd_clear()
-                display.lcd_display_string("Prints did not match", 1)
-            else:
-                display.lcd_clear()
-                display.lcd_display_string("Other error", 1)
-            # Add a delay here to allow the user to see the error message
-            sleep(2)
+        elif i == adafruit_fingerprint.ENROLLMISMATCH:
             display.lcd_clear()
+            display.lcd_display_string("Prints did not match", 1)
+        else:
+            display.lcd_clear()
+            display.lcd_display_string("Other error", 1)
+        
+        # Add a delay here to allow the user to see the error message
+        sleep(2)
+        display.lcd_clear()
 
     display.lcd_display_string("Adding Student", 1)
     i = finger.store_model(location)
@@ -529,24 +512,23 @@ def enroll(location):
 @app.route('/students/update/<id>', methods=["POST", "GET"])
 @login_required
 def students_update(id):
-    courses = Courses.query.all()
-    student = Students.query.get_or_404(id)
+    courses = Course.query.all()
+    student = Student.query.get_or_404(id)
 
     if current_user.username == 'admin':
             return redirect(url_for('admin'))
     else:
         if request.method == "POST":
-            student.fullname = request.form.get('fullname')
-            student.course = request.form.get('coursename')
-            student.studentid = request.form.get('studentid')
-            student.department = request.form.get('department')
-            student.program = request.form.get('program')
-            student.year = request.form.get('year')
-            student.parentphone = request.form.get('parentphone')
+            student.student_id = request.form.get('studentid')
+            student.lastname = request.form.get('lastname')
+            student.firstname = request.form.get('firstname')
+            student.middlename = request.form.get('middlename')
+            student.course_name = request.form.get('coursename')
+            student.parent_phone = request.form.get('parentphone')
 
             db.session.commit()
 
-            return redirect(url_for('students_list'))
+            return redirect(url_for('index'))
             
         display.lcd_clear()
         display.lcd_display_string("Student Attendance", 1)
@@ -558,13 +540,13 @@ def students_update(id):
 @app.route('/students/delete/<id>')
 @login_required
 def students_delete(id):
-    student = Students.query.filter_by(id=id).first()
+    student = Student.query.get_or_404(id)
     if current_user.username == 'admin':
         return redirect(url_for('admin'))
     else:
         display.lcd_clear()
         display.lcd_display_string("Deleting Student", 1)
-        display.lcd_display_string(f"{ student.fullname }", 2)
+        display.lcd_display_string(f"{ student.firstname+' '+student.lastname }", 2)
         sleep(2)
 
         if finger.delete_model(student.fingerprint_id) == adafruit_fingerprint.OK:
@@ -576,10 +558,11 @@ def students_delete(id):
         history = None
 
         if student:
-            history = History.query.filter_by(studentid=student.studentid).first()
+            history = AttendanceHistory.query.filter_by(student_id=student.student_id).first()
 
         if history:
             db.session.delete(history)
+
         db.session.delete(student)
 
         display.lcd_clear()
@@ -588,9 +571,12 @@ def students_delete(id):
 
         db.session.commit()
 
-        return redirect(url_for('students_list'))
+        return redirect(url_for('index'))
 
     return redirect(url_for('index'))
+
+##### FOR DEBUG PURPOSES ####
+## THIS CLEARS ALL FINGERPRINT IN THE SENSOR LIBRARY ##
 @app.route('/clear-fingerprint')
 @login_required
 def clear_fingerprint():
@@ -605,117 +591,134 @@ def clear_fingerprint():
         print("Failed to empty library")
         sleep(2)
         display.lcd_clear()
-################ COURSES ################    
-@app.route('/courses/list')
-@login_required
-def courses():
-    if current_user.username == 'admin':
-            return redirect(url_for('admin'))
-    else:
-        courses = Courses.query.filter_by(course_teacher=current_user.fullname).order_by(Courses.date_added).all()
-
-        display.lcd_clear()
-        display.lcd_display_string("Student Attendance", 1)
-        display.lcd_display_string("System", 2)
-        display.lcd_display_string("", 3)
-        display.lcd_display_string("Courses List", 4)
-
-        return render_template("courses-db.html", courses=courses)
-    
-@app.route('/courses/add', methods=["POST", "GET"])
-@login_required
-def courses_add():
-    if current_user.username == 'admin':
-            return redirect(url_for('admin'))
-    else:
-        if request.method == "POST":
-            course_name = request.form.get('course_name')
-            course_code = request.form.get('course_code')
-            course_description = request.form.get('course_description')
-            course_units = request.form.get('course_units')
-            
-            #Checking
-            course_check = Courses.query.filter_by(course_code=course_code).first()
-            
-            if course_check:
-                flash('Course Exists. Try again.')
-                display.lcd_clear()
-                display.lcd_display_string("Course Exists", 1)
-                display.lcd_display_string("Try again.", 2)
-                sleep(2)
-                return redirect(url_for('courses_add'))
-            new_course = Courses(course_name=course_name, course_code=course_code, course_description=course_description, course_units=course_units, course_teacher=current_user.fullname)
-
-            display.lcd_clear()
-            display.lcd_display_string("Adding course...", 1)
-            sleep(2)
-
-            db.session.add(new_course)
-            db.session.commit()
-
-            display.lcd_clear()
-            display.lcd_display_string("Course Added", 1)
-            sleep(2)
-
-            return redirect(url_for('courses'))
-
-        display.lcd_clear()
-        display.lcd_display_string("Student Attendance", 1)
-        display.lcd_display_string("System", 2)
-        display.lcd_display_string("", 3)
-        display.lcd_display_string("Add Course", 4)
-        return render_template("courses-add.html")
-
 ################ ADMIN DASHBOARD ################
 @app.route('/admin')
 @login_required
 def admin():
     if current_user.username == 'admin':
+        teacher = Teacher.query.filter(Teacher.username!='admin').all()
+        course = Course.query.all()
+        student = Student.query.all()
+
         display.lcd_display_string("Student Attendance", 1)
         display.lcd_display_string("System", 2)
         display.lcd_display_string("", 3)
         display.lcd_display_string("Welcome Admin", 4)
 
-        return render_template("admin.html", fullname=current_user.fullname)
+        return render_template("admin.html", fullname=current_user.firstname, teacher=teacher, course=course, student=student)
     else:
         return redirect(url_for('index'))
 
-################ TEACHERS ################
-@app.route('/teachers')
+################ COURSES ################
+@app.route('/courses/add', methods=["POST", "GET"])
 @login_required
-def teachers():
+def addcourse():
     if current_user.username == 'admin':
-        teachers = User.query.all()
+        teacher_query = Teacher.query.filter(Teacher.username!='admin')
 
+        if teacher_query.count() > 0:
+            if request.method == "POST":
+                course_name = request.form.get('coursename')
+                course_code = request.form.get('coursecode')
+                course_description = request.form.get('coursedescription')
+                course_units = request.form.get('courseunits')
+                course_teacher = request.form.get('courseteacher')
+                #Checking
+                course_check = Course.query.filter_by(course_code=course_code).first()
+                
+                if course_check:
+                    flash('Course Exists. Try again.')
+                    display.lcd_clear()
+                    display.lcd_display_string("Course Exists", 1)
+                    display.lcd_display_string("Try again.", 2)
+                    sleep(2)
+                    return redirect(url_for('courses_add'))
+                new_course = Course(course_name=course_name, course_code=course_code, course_description=course_description, course_units=course_units, course_teacher=course_teacher)
+
+                display.lcd_clear()
+                display.lcd_display_string("Adding course...", 1)
+                sleep(2)
+
+                db.session.add(new_course)
+                db.session.commit()
+
+                display.lcd_clear()
+                display.lcd_display_string("Course Added", 1)
+                sleep(2)
+
+                return redirect(url_for('admin'))
+        else:
+            flash('Add a Teacher First before proceeding to add course.')
+        teachers = Teacher.query.filter(Teacher.username!='admin').all()
         display.lcd_clear()
         display.lcd_display_string("Student Attendance", 1)
         display.lcd_display_string("System", 2)
-        display.lcd_display_string("Teachers List", 4)
+        display.lcd_display_string("", 3)
+        display.lcd_display_string("Add Course", 4)
+        return render_template("courses-add.html", teachers=teachers, fullname=current_user.firstname+' '+current_user.lastname)
+    else:
+        return redirect(url_for('admin'))
 
-        return render_template("teachers.html", teachers=teachers)
+@app.route('/courses/delete/<id>')
+@login_required
+def deletecourse(id):
+    if current_user.username == 'admin':
+        course = Course.query.get(id)
+
+        if course is None:
+            abort(404)
+
+        course_name = course.course_name
+        students = Student.query.filter_by(course_name=course_name).all()
+
+        display.lcd_clear()
+        display.lcd_display_string("Deleting Course", 1)
+        display.lcd_display_string(f"{course_name}", 2)
+        sleep(2)
+        
+        if students:
+            for student in students:
+                db.session.delete(student)
+
+        db.session.delete(course)
+
+        display.lcd_clear()
+        display.lcd_display_string("Course Deleted...", 1)
+        sleep(2)
+
+        db.session.commit()
+
+        return redirect(url_for('index'))
     return redirect(url_for('index'))
 
+################ TEACHERS ################
 @app.route('/teachers/add', methods=["POST", "GET"])
 @login_required
 def addteacher():
     if current_user.username == 'admin':
-        if request.method == "POST": 
-            fullname = request.form.get('fullname')
-            username = request.form.get('username')
+        if request.method == "POST":
+            
+            random_numbers = ''.join(random.choices(string.digits, k=4))
+
+            teacher_id = request.form.get('teacher_id')
+            lastname = request.form.get('lastname')
+            firstname = request.form.get('firstname')
+            middlename = request.form.get('middlename')
+            gender = request.form.get('gender')
+            username = lastname.lower() + firstname[0].lower() + random_numbers
             password = request.form.get('password')
 
-            user = User.query.filter_by(username=username).first()
+            user = Teacher.query.filter_by(teacher_id=teacher_id).first()
             
             if user:
-                flash('Username Exists. Try another one.')
+                flash('Teacher Exists. Try again.')
                 display.lcd_clear()
-                display.lcd_display_string("Username Exists", 1)
-                display.lcd_display_string("Try another one.", 2)
+                display.lcd_display_string("Teacher Exists", 1)
+                display.lcd_display_string("Try again.", 2)
                 sleep(2)
                 return redirect(url_for('addteacher'))
             
-            new_user = User(fullname=fullname, username=username.lower(), password=generate_password_hash(password))
-
+            new_user = Teacher(teacher_id=teacher_id, lastname=lastname, firstname=firstname, middlename=middlename, gender=gender, username=username, password=generate_password_hash(password))
             
             display.lcd_clear()
             display.lcd_display_string("Adding Teacher...", 1)
@@ -728,24 +731,27 @@ def addteacher():
             display.lcd_display_string("Teacher Added", 1)
             sleep(2)
             
-            return redirect(url_for('teachers'))
+            return redirect(url_for('index'))
         display.lcd_clear()
         display.lcd_display_string("Student Attendance", 1)
         display.lcd_display_string("System", 2)
         display.lcd_display_string("Add Teacher", 4)
-        return render_template("addteacher.html")
+        return render_template("addteacher.html", fullname=current_user.firstname+' '+current_user.lastname)
     return redirect(url_for('index'))
-
 
 @app.route('/teachers/update/<id>', methods=["POST", "GET"])
 @login_required
 def updateteacher(id):
     if current_user.username == 'admin':
-        teacher = User.query.get_or_404(id)
+        teacher = Teacher.query.get_or_404(id)
 
         if request.method == "POST":
-            teacher.fullname = request.form['fullname']
-            teacher.username = request.form['username']
+            random_numbers = ''.join(random.choices(string.digits, k=4))
+            teacher.lastname = request.form['lastname']
+            teacher.firstname = request.form['firstname']
+            teacher.middlename = request.form['middlename']
+            teacher.gender = request.form['gender']
+            teacher.username = teacher.lastname.lower() + teacher.firstname[0].lower() + random_numbers
             teacher.password = generate_password_hash(request.form['password'])
 
             display.lcd_clear()
@@ -758,7 +764,7 @@ def updateteacher(id):
             display.lcd_display_string("Teacher Updated", 1)
             sleep(2)
 
-            return redirect(url_for('teachers'))
+            return redirect(url_for('index'))
         else:
             display.lcd_clear()
             display.lcd_display_string("Student Attendance", 1)
@@ -772,18 +778,23 @@ def updateteacher(id):
 @login_required
 def deleteteacher(id):
     if current_user.username == 'admin':    
-        teacher = User.query.get(id)
+        teacher = Teacher.query.get(id)
         if teacher is None:
             abort(404)  # Return 404 Not Found error page
         
         # Find all students associated with the teacher
-        students = Students.query.filter_by(teacher_name=teacher.fullname).all()
+        teacher_name = teacher.firstname + ' ' + teacher.lastname
+        students = Student.query.filter_by(teacher_name=teacher_name).all()
+        courses = Course.query.filter_by(course_teacher=teacher_name).all()
 
         display.lcd_clear()
         display.lcd_display_string("Deleting Teacher", 1)
-        display.lcd_display_string(f"{teacher.fullname}", 2)
+        display.lcd_display_string(f"{teacher.firstname+' '+teacher.lastname}", 2)
         sleep(2)
 
+        for course in courses:
+            db.session.delete(course)
+        
         for student in students:
             if student.fingerprint_id:
                 # Delete the student's fingerprint ID
@@ -810,25 +821,16 @@ def deleteteacher(id):
 
         db.session.commit()
 
-        return redirect(url_for('teachers'))
+        return redirect(url_for('index'))
     
     return redirect(url_for('index'))
 
-@app.route('/students')
+@app.route('/error404')
 @login_required
-def students():
-    if current_user.username == 'admin':
-        students = Students.query.order_by(Students.date_added).all()
-
-        display.lcd_clear()
-        display.lcd_display_string("Student Attendance", 1)
-        display.lcd_display_string("System", 2)
-        display.lcd_display_string("Students List", 4)
-
-        return render_template("students.html", students=students)
-    return redirect(url_for('index'))
+def error404():
+    return render_template("error404.html")
 
 #404 ERROR HANDLING
 @app.errorhandler(404)
 def page_not_found(error):
-    return redirect(url_for('index'))
+    return redirect(url_for('error404'))

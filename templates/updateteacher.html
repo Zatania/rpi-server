@@ -3,47 +3,224 @@
     <title>Student Attendance System - Add Teacher</title>
 {% endblock %}
 {% block content %}
-    <body>
-        <section class="sign-in">
-            <div class="container-fluid d-flex justify-content-center align-items-center vh-100">
-                <div class="col-xl-10">
-                    <div class="card" style="border-radius: 1rem;">
-                        <div class="card-body p-5">
-                            <div class="d-grid d-md-flex justify-content-md-start">
-                                <a href="{{ url_for('teachers') }}">
-                                    <button type="button" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-arrow-left-long"></i> Return</button>
+    <body id="page-top">
+        <!-- Page Wrapper -->
+        <div id="wrapper">
+
+            <!-- Sidebar -->
+            <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+
+                <!-- Sidebar - Brand -->
+                <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url_for('index') }}">
+                    <div class="sidebar-brand-text mx-3">Student Attendance System</div>
+                </a>
+
+                <!-- Divider -->
+                <hr class="sidebar-divider my-0">
+
+                <!-- Nav Item - Dashboard -->
+                <li class="nav-item active">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="fas fa-fw fa-tachometer-alt"></i>
+                        <span>Dashboard</span></a>
+                </li>
+
+                <!-- Divider -->
+                <hr class="sidebar-divider">
+
+                <!-- Heading -->
+                <div class="sidebar-heading">
+                    Menu
+                </div>
+
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('addteacher') }}">
+                        <i class="fas fa-fw fa-users"></i>
+                        <span>Add Teachers</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('addcourse') }}">
+                        <i class="fas fa-fw fa-table"></i>
+                        <span>Add Courses</span></a>
+                </li>
+
+                <!-- Divider -->
+                <hr class="sidebar-divider d-none d-md-block">
+
+                <!-- Sidebar Toggler (Sidebar) -->
+                <div class="text-center d-none d-md-inline">
+                    <button class="rounded-circle border-0" id="sidebarToggle"></button>
+                </div>
+
+            </ul>
+            <!-- End of Sidebar -->
+
+            <!-- Content Wrapper -->
+            <div id="content-wrapper" class="d-flex flex-column">
+
+                <!-- Main Content -->
+                <div id="content">
+
+                    <!-- Topbar -->
+                    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+
+                        <!-- Sidebar Toggle (Topbar) -->
+                        <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                            <i class="fa fa-bars"></i>
+                        </button>
+
+                        <!-- Topbar Navbar -->
+                        <ul class="navbar-nav ml-auto">
+
+                            <!-- Nav Item - User Information -->
+                            <li class="nav-item dropdown no-arrow">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ fullname }}</span>
                                 </a>
+                                <!-- Dropdown - User Information -->
+                                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                                    aria-labelledby="userDropdown">
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </li>
+
+                        </ul>
+
+                    </nav>
+                    <!-- End of Topbar -->
+
+                    <!-- Begin Page Content -->
+                    <div class="container-fluid">
+                        <div class="row align-items-center min-vh-100">
+                            <div class="col-xl-5 col-lg-5 col-md-5 mx-auto">
+                                <div class="card o-hidden border-0 shadow-lg my-5">
+                                    <div class="card-body p-0">
+                                        <!-- Nested Row within Card Body -->
+                                        <div class="row">
+                                            <div class="col-lg-12">
+                                                <div class="p-5">
+                                                    <div class="text-center">
+                                                        <h1 class="h4 text-gray-900 mb-4">UPDATE TEACHER</h1>
+                                                    </div>
+                                                    <div class="mb-1">
+                                                        {% with messages = get_flashed_messages() %}
+                                                            {% if messages %}
+                                                                <div class="alert alert-danger" role="alert">
+                                                                    {% for message in messages %}
+                                                                        {{ message }}
+                                                                    {% endfor %}
+                                                                </div>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    </div>
+                                                    <form action="/teachers/update/{{ teacher.id }}" class="user" method="POST">
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                Teacher ID
+                                                            </label>
+                                                            <input type="number" name="teacher_id" class="form-control form-control-user"
+                                                                id="inputTeacherID" placeholder="Teacher ID" value="{{ teacher.teacher_id }}">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                Last Name
+                                                            </label>
+                                                            <input type="text" name="lastname" class="form-control form-control-user"
+                                                                id="inputLastname" placeholder="Last Name" value="{{ teacher.lastname }}">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                First Name
+                                                            </label>
+                                                            <input type="text" name="firstname" class="form-control form-control-user"
+                                                                id="inputFirstname" placeholder="First Name" value="{{ teacher.firstname }}">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                Middle Name
+                                                            </label>
+                                                            <input type="text" name="middlename" class="form-control form-control-user"
+                                                                id="inputMiddlename" placeholder="Middle Name" value="{{ teacher.middlename }}">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                Gender
+                                                            </label>
+                                                            <select name="gender" id="gender" class="form-control" placeholder="gender">
+                                                                {% if teacher.gender == 'Male' %}
+                                                                    <option value="Male" selected>Male</option>
+                                                                    <option value="Female">Female</option>
+                                                                {% else %}
+                                                                    <option value="Male">Male</option>
+                                                                    <option value="Female" selected>Female</option>
+                                                                {% endif %}
+                                                            </select>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="label">
+                                                                Change Password
+                                                            </label>
+                                                            <input type="password" name="password" class="form-control form-control-user"
+                                                                id="inputPassword" placeholder="Password" required>
+                                                        </div>
+                                                        <button class="btn btn-primary btn-user btn-block" type="submit">Update</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <h1 class="card-title mb-5 text-center">Update Teacher</h1>
-                            <form method="POST" action="/teachers/update/{{ teacher.id}}">
-                                <div class="row">
-                                    <div class="col-md-4 mb-4">
-                                        <div class="form-floating form-outline">
-                                            <input type="text" id="fullname floatingInput" class="form-control" placeholder="fullname" name="fullname" value="{{ teacher.fullname }}"/>
-                                            <label class="form-label" for="fullname floatingInput">Full Name</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mb-4">
-                                        <div class="form-floating form-outline">
-                                            <input type="text" id="username floatingInput" class="form-control" placeholder="username" name="username" value="{{ teacher.username }}"/>
-                                            <label class="form-label" for="username floatingInput">Username</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mb-4">
-                                        <div class="form-floating form-outline">
-                                            <input type="password" id="password floatingInput" class="form-control" placeholder="password" name="password" value="{{ teacher.password }}"/>
-                                            <label class="form-label" for="password floatingInput">Password</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-grid d-flex justify-content-md-end">
-                                    <button class="btn btn-outline-primary" type="submit">Add</button>
-                                </div>
-                            </form>
                         </div>
+                    </div>
+                    <!-- /.container-fluid -->
+                </div>
+                <!-- End of Main Content -->
+
+                <!-- Footer -->
+                <footer class="sticky-footer bg-white">
+                    <div class="container my-auto">
+                        <div class="copyright text-center my-auto">
+                            <span>Copyright &copy; Student Attendance System 2023</span>
+                        </div>
+                    </div>
+                </footer>
+                <!-- End of Footer -->
+
+            </div>
+            <!-- End of Content Wrapper -->
+
+        </div>
+        <!-- End of Page Wrapper -->
+
+        <!-- Scroll to Top Button-->
+        <a class="scroll-to-top rounded" href="#page-top">
+            <i class="fas fa-angle-up"></i>
+        </a>
+
+        <!-- Logout Modal-->
+        <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">You want to logout?</h5>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">Press logout button.</div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <a class="btn btn-primary" href="{{ url_for('logout') }}">Logout</a>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </body>
 {% endblock %}
